@@ -75,6 +75,7 @@ MODEL_ORDER_CLASSIFICATION = [
     'RoberteyeWord',
     'RoberteyeFixation',
     'MAG',
+    'CMAEMAGEye',
     'PostFusion',
 ]
 
@@ -94,6 +95,7 @@ MODEL_ORDER_REGRESSION = [
     'RoberteyeWord',
     'RoberteyeFixation',
     'MAG',
+    'CMAEMAGEye',
     'PostFusion',
 ]
 
@@ -121,6 +123,7 @@ MODEL_TO_COLUMN = {
     'AhnRNN': 'AhnRNN~\\citep{ahn2020towards}',
     'BEyeLSTMArgs': 'BEyeLSTM~\\citep{reich_inferring_2022}',
     'MAG': 'MAG-Eye~\\citep{Shubi2024Finegrained}',
+    'CMAEMAGEye': 'C-MAE-MAG-Eye',
     'PLMASArgs': 'PLM-AS~\\citep{Yang2023PLMASPL}',
     'PLMASfArgs': 'PLM-AS-RM~\\citep{haller2022eye}',
     'RoberteyeWord': 'RoBERTEye-W~\\citep{Shubi2024Finegrained}',
@@ -269,6 +272,14 @@ FEATURE_TYPES = {
         'Embeddings': '\\checkmark',
     },
     'MAG': {
+        'Layout': '\\checkmark',
+        'Saccade/Fixation': '-',
+        'Word-Level': '\\checkmark',
+        'Trial-Level': '\\checkmark',
+        'Linguistic': '\\checkmark',
+        'Embeddings': '\\checkmark',
+    },
+    'CMAEMAGEye': {
         'Layout': '\\checkmark',
         'Saccade/Fixation': '-',
         'Word-Level': '\\checkmark',

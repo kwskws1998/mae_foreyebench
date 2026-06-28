@@ -151,6 +151,25 @@ dl_search_space_by_model_name: dict[DLModelNames, dict] = {
             }
         },
     },
+    DLModelNames.CMAE_MAG_MODEL: {
+        'model': {
+            'parameters': {
+                'mag_dropout': {'values': [0.1, 0.3]},
+                'mag_injection_index': {'values': [23]},
+                'freeze': {'values': [False]},
+                'cmae_mask_ratio': {'values': [0.2, 0.3]},
+                'cmae_reconstruction_loss_weight': {'values': [0.05, 0.1]},
+                'cmae_alignment_loss_weight': {'values': [0.0, 0.01]},
+                'cmae_logit_gate_init': {'values': [-2.0]},
+                'cmae_condition_layer': {'values': [0]},
+            }
+        },
+        'trainer': {
+            'parameters': {
+                'learning_rate': {'values': [1e-5, 3e-5]},
+            }
+        },
+    },
     DLModelNames.POSTFUSION_MODEL: {
         'model': {
             'parameters': {

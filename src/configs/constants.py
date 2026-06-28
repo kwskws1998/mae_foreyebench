@@ -281,6 +281,7 @@ class DLModelNames(StrEnum):
     PLMAS_MODEL = 'PLMASModel'
     PLMASF_MODEL = 'PLMASFModel'
     MAG_MODEL = 'MAGModel'
+    CMAE_MAG_MODEL = 'CMAEMAGModel'
     AHN_CNN_MODEL = 'AhnCNNModel'
     AHN_RNN_MODEL = 'AhnRNNModel'
     BEYELSTM_MODEL = 'BEyeLSTMModel'

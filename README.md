@@ -342,3 +342,47 @@ python run_commands/utils/download_processed_folds_from_hf.py \
   --local-dir . \
   --datasets all
 ```
+
+### C-MAE-MAG-Eye Experimental Model
+
+This fork adds a modular C-MAE implementation under `model/` and registers a Hydra model config named `CMAEMAGEye`.
+The model keeps the existing MAG baseline path, adds a text-conditioned masked gaze autoencoder, and feeds the C-MAE trial representation into the final logits through a small gated residual head.
+
+Smoke run for one fold:
+
+```bash
+cd /workspace/mae_foreyebench
+conda activate eyebench
+export PYTHONPATH="$PWD:${PYTHONPATH:-}"
+export CUDA_VISIBLE_DEVICES=0
+export WANDB_MODE=offline
+
+python src/run/single_run/train.py \
+  +trainer=TrainerDL \
+  +model=CMAEMAGEye \
+  +data=PoTeC_RC \
+  data.fold_index=0 \
+  trainer.devices=1 \
+  trainer.precision=THIRTY_TWO_TRUE \
+  trainer.num_workers=4 \
+  trainer.wandb_entity=offline \
+  trainer.wandb_project=CMAEMAG_PoTeC_RC_smoke \
+  trainer.wandb_job_type=CMAEMAGEye_PoTeC_RC_fold0 \
+  model.batch_size=2 \
+  model.accumulate_grad_batches=8 \
+  model.max_epochs=1 \
+  model.early_stopping_patience=1 \
+  model.mag_injection_index=23 \
+  model.cmae_reconstruction_loss_weight=0.1 \
+  hydra.run.dir='outputs/cmaemageye_smoke/fold_index=0'
+```
+
+The existing baseline runner can also launch it:
+
+```bash
+BASELINE_MODELS="CMAEMAGEye" \
+DATA_TASK=PoTeC_RC \
+CUDA_VISIBLE_DEVICES=0 \
+WANDB_MODE=offline \
+bash run_commands/run_potec_rc_baseline_from_hf.sh
+```

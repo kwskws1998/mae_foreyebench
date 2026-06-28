@@ -575,6 +575,7 @@ if __name__ == '__main__':
         'AhnRNN',
         'BEyeLSTMArgs',
         'MAG',
+        'CMAEMAGEye',
         'PLMASArgs',
         'PLMASfArgs',
         'PostFusion',
