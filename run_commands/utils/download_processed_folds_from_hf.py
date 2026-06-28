@@ -63,7 +63,7 @@ def normalize_datasets(values: list[str]) -> list[str]:
 def build_allow_patterns(datasets: list[str], include_manifests: bool) -> list[str]:
     patterns: list[str] = []
     if include_manifests:
-        patterns.extend(["README.md", "manifest_sizes.txt", "manifest_files.txt"])
+        patterns.extend(["manifest_sizes.txt", "manifest_files.txt"])
 
     for dataset in datasets:
         patterns.extend(
@@ -162,9 +162,12 @@ def parse_args() -> argparse.Namespace:
         help="Minimum number of fold_* directories required during verification. Default: 4.",
     )
     parser.add_argument(
-        "--no-manifests",
+        "--include-manifests",
         action="store_true",
-        help="Do not download README.md / manifest files from the HF dataset repo.",
+        help=(
+            "Also download manifest_sizes.txt / manifest_files.txt from the HF dataset repo. "
+            "The dataset README is intentionally never downloaded into the repository root."
+        ),
     )
     parser.add_argument(
         "--local-files-only",
@@ -188,7 +191,7 @@ def main() -> int:
     args = parse_args()
     datasets = normalize_datasets(args.datasets)
     local_dir = Path(args.local_dir).expanduser().resolve()
-    allow_patterns = build_allow_patterns(datasets, include_manifests=not args.no_manifests)
+    allow_patterns = build_allow_patterns(datasets, include_manifests=args.include_manifests)
 
     print(f"HF dataset repo: {args.repo_id}")
     print(f"Local EyeBench root: {local_dir}")

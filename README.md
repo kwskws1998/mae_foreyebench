@@ -343,6 +343,8 @@ python run_commands/utils/download_processed_folds_from_hf.py \
   --datasets all
 ```
 
+The downloader writes only `data/<dataset>/{processed,folds,folds_metadata}` by default. It intentionally does not download the Hugging Face dataset `README.md` into the repository root, because that would dirty the Git checkout and block `git pull`.
+
 ### C-MAE-MAG-Eye Experimental Model
 
 This fork adds a modular C-MAE implementation under `model/` and registers a Hydra model config named `CMAEMAGEye`.
@@ -374,7 +376,7 @@ python src/run/single_run/train.py \
   model.early_stopping_patience=1 \
   model.mag_injection_index=23 \
   model.cmae_reconstruction_loss_weight=0.1 \
-  hydra.run.dir='outputs/cmaemageye_smoke/fold_index=0'
+  "hydra.run.dir='outputs/cmaemageye_smoke/fold_index=0'"
 ```
 
 The existing baseline runner can also launch it:
