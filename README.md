@@ -260,22 +260,85 @@ This fork is set up so GPU instances do not need to download or preprocess raw E
 cd /workspace/mae_foreyebench
 conda activate eyebench
 
-pip install -U 'huggingface_hub[hf_xet]<1.0,>=0.24.0'
+# Do not use `pip install -U huggingface_hub...` here. It can upgrade
+# dependencies beyond the versions expected by `datasets==3.5.0` and
+# `lightning==2.5.1.post0`.
+python -m pip install --force-reinstall \
+  "huggingface_hub[hf_xet]==0.36.2" \
+  "fsspec[http]==2024.12.0" \
+  "dill==0.3.8" \
+  "multiprocess==0.70.16" \
+  "packaging==24.2"
+
+python - <<'PY'
+import torch
+import transformers
+import datasets
+import huggingface_hub
+import fsspec
+import dill
+import multiprocess
+import packaging
+import lightning
+
+print("torch", torch.__version__)
+print("cuda", torch.cuda.is_available())
+if torch.cuda.is_available():
+    print("gpu", torch.cuda.get_device_name(0))
+print("transformers", transformers.__version__)
+print("datasets", datasets.__version__)
+print("huggingface_hub", huggingface_hub.__version__)
+print("fsspec", fsspec.__version__)
+print("dill", dill.__version__)
+print("multiprocess", multiprocess.__version__)
+print("packaging", packaging.__version__)
+print("lightning", lightning.__version__)
+PY
+
 hf auth login
 
-CUDA_VISIBLE_DEVICES=0 bash run_commands/run_potec_rc_baseline_from_hf.sh
+python run_commands/utils/download_processed_folds_from_hf.py \
+  skboy/eyebench-processed-folds \
+  --local-dir . \
+  --datasets PoTeC
+
+CUDA_VISIBLE_DEVICES=0 \
+WANDB_MODE=offline \
+bash run_commands/run_potec_rc_baseline_from_hf.sh \
+  2>&1 | tee logs/run_potec_rc_mag_baseline_$(date +%Y%m%d_%H%M).log
 ```
 
 The default script downloads PoTeC from `skboy/eyebench-processed-folds`, trains the EyeBench `MAG` baseline on folds `0 1 2 3`, runs `test_dl.py`, and writes a result archive at the repository root.
 
+Expected core versions after the dependency repair step:
+
+```text
+torch 2.5.1
+cuda True
+transformers 4.47.1
+datasets 3.5.0
+huggingface_hub 0.36.2
+fsspec 2024.12.0
+dill 0.3.8
+multiprocess 0.70.16
+packaging 24.2
+lightning 2.5.1.post0
+```
+
 To run several baselines:
 
 ```bash
-BASELINE_MODELS="MAG RoberteyeWord Roberta" CUDA_VISIBLE_DEVICES=0 bash run_commands/run_potec_rc_baseline_from_hf.sh
+BASELINE_MODELS="MAG RoberteyeWord Roberta" \
+CUDA_VISIBLE_DEVICES=0 \
+WANDB_MODE=offline \
+bash run_commands/run_potec_rc_baseline_from_hf.sh
 ```
 
 To download all processed benchmark datasets without training:
 
 ```bash
-python run_commands/utils/download_processed_folds_from_hf.py   skboy/eyebench-processed-folds   --local-dir .   --datasets all
+python run_commands/utils/download_processed_folds_from_hf.py \
+  skboy/eyebench-processed-folds \
+  --local-dir . \
+  --datasets all
 ```
