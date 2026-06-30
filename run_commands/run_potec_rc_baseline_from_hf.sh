@@ -15,7 +15,7 @@ BASELINE_MODELS="${BASELINE_MODELS:-MAG}"
 FOLDS="${FOLDS:-0 1 2 3}"
 PRECISION="${PRECISION:-THIRTY_TWO_TRUE}"
 NUM_WORKERS="${NUM_WORKERS:-4}"
-WANDB_ENTITY="${WANDB_ENTITY:-EyeRead}"
+WANDB_ENTITY="${WANDB_ENTITY:-auto}"
 WANDB_PROJECT="${WANDB_PROJECT:-EyeBench_${DATA_TASK}_baseline_$(date +%Y%m%d_%H%M)}"
 RUN_TAG="${RUN_TAG:-baseline_${DATA_TASK}_$(echo "$BASELINE_MODELS" | tr ' ' '_' | tr ',' '_')_$(date +%Y%m%d_%H%M)}"
 RUN_ROOT="${RUN_ROOT:-$ROOT_DIR/outputs/$RUN_TAG}"
@@ -34,6 +34,30 @@ except ModuleNotFoundError as exc:
         f"{exc}. Install with: python -m pip install pytorch-metric-learning"
     ) from exc
 PY
+
+if [[ "${WANDB_MODE}" == "online" ]]; then
+  python - <<'PY'
+import os
+from pathlib import Path
+
+if os.environ.get("WANDB_API_KEY"):
+    raise SystemExit(0)
+
+candidate_paths = [
+    Path.home() / ".netrc",
+    Path.home() / ".config" / "wandb" / "settings",
+    Path.home() / ".wandb" / "settings",
+]
+
+if any(path.exists() for path in candidate_paths):
+    raise SystemExit(0)
+
+raise SystemExit(
+    "W&B API key is not configured. Run `wandb login` or set WANDB_API_KEY "
+    "before launching with WANDB_MODE=online."
+)
+PY
+fi
 
 python run_commands/utils/download_processed_folds_from_hf.py \
   "$HF_DATASET_REPO" \

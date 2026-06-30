@@ -28,6 +28,7 @@ from src.models.base_model import BaseModel
 from src.run.multi_run import supported_datamodules, supported_models  # noqa: F401
 from src.run.single_run.utils import (
     configure_trainer,
+    init_wandb_run,
     instantiate_config,
     setup_logger,
     update_cfg_with_wandb,
@@ -91,13 +92,14 @@ def main(cfg: DictConfig) -> None:
     work_dir = HydraConfig.get().runtime.output_dir
 
     if args.trainer.run_mode != RunModes.FAST_DEV_RUN:
-        wandb.init(
-            entity=args.trainer.wandb_entity,
-            project=args.trainer.wandb_project,
-            job_type=args.trainer.wandb_job_type,
-            notes=args.trainer.wandb_notes,
-            dir=work_dir,
+        resolved_wandb_entity = init_wandb_run(
+            wandb_entity=args.trainer.wandb_entity,
+            wandb_project=args.trainer.wandb_project,
+            wandb_job_type=args.trainer.wandb_job_type,
+            wandb_notes=args.trainer.wandb_notes,
+            work_dir=work_dir,
         )
+        args.trainer.wandb_entity = resolved_wandb_entity or 'auto'
 
     # # If wandb config is not empty, we are running a sweep, so we need to update the args.
     if wandb.run and wandb.config.as_dict():

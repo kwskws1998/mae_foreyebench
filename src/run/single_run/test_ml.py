@@ -55,7 +55,7 @@ from src.configs.trainers import TrainerML
 from src.data.datamodules import base_datamodule
 from src.data.datamodules.base_datamodule import DataModuleFactory
 from src.run.multi_run import supported_datamodules, supported_models  # noqa: F401
-from src.run.single_run.utils import extract_trial_info
+from src.run.single_run.utils import extract_trial_info, resolve_wandb_entity
 
 CLASSIFICATION_MODEL_CONFIGS = [
     SupportVectorMachineMLArgs,
@@ -101,12 +101,13 @@ def main() -> None:
     lf.seed_everything(42, workers=True, verbose=False)
     torch.set_float32_matmul_precision('high')
     api = wandb.Api()
+    wandb_entity = resolve_wandb_api_entity(api=api, wandb_entity=args.wandb_entity)
 
     # Single run if run_id is provided
     if args.wandb_run_id is not None:
         cfg_of_run = get_config_from_run(
             api,
-            entity=args.wandb_entity,
+            entity=wandb_entity,
             project=args.wandb_project,
             run_id=args.wandb_run_id,
         )
@@ -133,7 +134,7 @@ def main() -> None:
             for sweep in tqdm(exp.sweeps):
                 cfg_of_best = get_config_from_sweep(
                     api,
-                    args.wandb_entity,
+                    wandb_entity,
                     exp.wandb_project,
                     sweep.sweep_id,
                 )
@@ -158,7 +159,7 @@ class HyperArgs(Tap):
     Command line arguments for the script.
     """
 
-    wandb_entity: str = 'EyeRead'  # Name of the wandb entity to log to.
+    wandb_entity: str = 'auto'  # Use the logged-in default W&B entity.
     wandb_run_id: str | None = None  # Provide if you want a single run.
     data_task: str = 'CopCo_TYP'  # Name of the data task (e.g., CopCo_TYP).
     wandb_project: str = 'CopCo_TYP_20250714'  # Name of the wandb project.
@@ -233,6 +234,21 @@ def get_config_from_sweep(
     sweep_obj = api.sweep(path=f'{entity}/{project}/{sweep_id}')
     best_run = sweep_obj.best_run()
     return best_run.config
+
+
+def resolve_wandb_api_entity(api: wandb.Api, wandb_entity: str) -> str:
+    resolved_entity = resolve_wandb_entity(wandb_entity)
+    if resolved_entity is not None:
+        return resolved_entity
+
+    default_entity = getattr(api, 'default_entity', None)
+    if default_entity:
+        return default_entity
+
+    raise ValueError(
+        'Could not resolve the W&B entity automatically. Run `wandb login` or '
+        'pass --wandb_entity explicitly.'
+    )
 
 
 def get_config_from_run(

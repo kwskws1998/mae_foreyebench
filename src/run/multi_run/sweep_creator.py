@@ -16,6 +16,7 @@ from tap import Tap
 
 from src.run.multi_run.search_spaces import search_space_by_model
 from src.run.multi_run.utils import count_hyperparameter_configs
+from src.run.single_run.utils import resolve_wandb_entity
 
 logger.add('logs/sweeps.log', level='INFO')
 
@@ -38,7 +39,7 @@ class HyperArgs(Tap):
         250  # Maximum number of runs to execute. Relevant for non-grid search.
     )
     wandb_project: str = 'debug'  # Name of the wandb project to log to.
-    wandb_entity: str = 'EyeRead'  # Name of the wandb entity to log to.
+    wandb_entity: str = 'auto'  # Use the logged-in default W&B entity.
     folds: list[int] = [0]  # List of fold indices to run.
     gpu_count: int = 1  # Number of GPUs to use. >1  not tested.
     search_algorithm: Literal['bayes', 'grid', 'random'] = (
@@ -85,15 +86,16 @@ def create_sweep_configs(args: HyperArgs) -> list[dict]:
             f'Warning: The number of hyperparameter configurations ({total_count}) is less than the run cap ({args.run_cap}).'
         )
 
-    sweep_configs = [
-        {
+    resolved_entity = resolve_wandb_entity(args.wandb_entity)
+    sweep_configs = []
+    for fold_idx in args.folds:
+        sweep_config = {
             'program': 'src/run/single_run/train.py',
             'method': args.search_algorithm,
             'metric': {
                 'goal': 'minimize',
                 'name': 'loss/val_all',
             },
-            'entity': args.wandb_entity,
             'project': args.wandb_project,
             'name': f'{args.model}_{args.data_task}_fold_{fold_idx}',
             'parameters': search_space,
@@ -111,8 +113,9 @@ def create_sweep_configs(args: HyperArgs) -> list[dict]:
                 f'trainer.wandb_job_type={args.model}_{args.data_task}',
             ],
         }
-        for fold_idx in args.folds
-    ]
+        if resolved_entity is not None:
+            sweep_config['entity'] = resolved_entity
+        sweep_configs.append(sweep_config)
 
     return sweep_configs
 
@@ -129,10 +132,29 @@ def launch_sweeps(entity: str, project: str, sweep_configs: list[dict]) -> list[
     Returns:
         List[str]: List of sweep ids.
     """
-    sweep_ids = [
-        wandb.sweep(cfg, entity=entity, project=project) for cfg in sweep_configs
-    ]
+    resolved_entity = resolve_wandb_entity(entity)
+    sweep_kwargs = {'project': project}
+    if resolved_entity is not None:
+        sweep_kwargs['entity'] = resolved_entity
+
+    sweep_ids = [wandb.sweep(cfg, **sweep_kwargs) for cfg in sweep_configs]
     return sweep_ids
+
+
+def resolve_wandb_agent_entity(wandb_entity: str) -> str:
+    resolved_entity = resolve_wandb_entity(wandb_entity)
+    if resolved_entity is not None:
+        return resolved_entity
+
+    api = wandb.Api()
+    default_entity = getattr(api, 'default_entity', None)
+    if default_entity:
+        return default_entity
+
+    raise ValueError(
+        'Could not resolve the W&B entity automatically. Run `wandb login` or '
+        'pass --wandb_entity explicitly.'
+    )
 
 
 def write_bash_script(
@@ -198,6 +220,7 @@ def write_slurm_script(
         sweep_ids (list[str]): List of sweep ids.
         slurm_qos (str): Slurm quality of service (normal or basic).
     """
+    agent_entity = resolve_wandb_agent_entity(hyper_args.wandb_entity)
     base_srun_command = f"""
 srun --overlap --ntasks=1 --nodes=1 --cpus-per-task=$SLURM_CPUS_PER_TASK -p work,mig \\
     --container-image=/rg/berzak_prj/shubi/prj/rev05_pytorchlightning+pytorch_lightning.sqsh \\
@@ -207,7 +230,7 @@ srun --overlap --ntasks=1 --nodes=1 --cpus-per-task=$SLURM_CPUS_PER_TASK -p work
 echo 'Starting job on $(date)'
 source /home/shubi/prj/nvidia_pytorch_25_03_py3_mamba_wrapper.sh
 conda activate eyebench
-wandb agent {hyper_args.wandb_entity}/{hyper_args.wandb_project}/$SWEEP_ID"
+wandb agent {agent_entity}/{hyper_args.wandb_project}/$SWEEP_ID"
     """
     srun_command = f"""{base_srun_command}"""
     if hyper_args.num_duplicates_per_gpu > 1:
@@ -263,11 +286,12 @@ def create_bash_scripts(
         + '_'.join(map(str, hyper_args.folds))
         + '.sh'
     )
+    agent_entity = resolve_wandb_agent_entity(hyper_args.wandb_entity)
     main_command = '; '.join(
         ['conda activate eyebench']
         + [
             f'CUDA_VISIBLE_DEVICES=${{GPU_NUM}} wandb agent '
-            f'{hyper_args.wandb_entity}/{hyper_args.wandb_project}/{sweep_id}'
+            f'{agent_entity}/{hyper_args.wandb_project}/{sweep_id}'
             for sweep_id in sweep_ids
         ]
     )

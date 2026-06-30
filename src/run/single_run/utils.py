@@ -166,10 +166,71 @@ def setup_logger(
     wandb_entity: str,
     wandb_job_type: str,
 ) -> WandbLogger:
-    return WandbLogger(
-        project=wandb_project,
-        entity=wandb_entity,
-        job_type=wandb_job_type,
+    logger_kwargs = {
+        'project': wandb_project,
+        'job_type': wandb_job_type,
+    }
+    resolved_entity = resolve_wandb_entity(wandb_entity)
+    if resolved_entity is not None:
+        logger_kwargs['entity'] = resolved_entity
+
+    return WandbLogger(**logger_kwargs)
+
+
+def resolve_wandb_entity(wandb_entity: str | None) -> str | None:
+    if wandb_entity is None:
+        return None
+
+    value = str(wandb_entity).strip()
+    if value.lower() in {'', 'auto', 'default', 'none', 'null', 'offline'}:
+        return None
+
+    return value
+
+
+def init_wandb_run(
+    wandb_entity: str,
+    wandb_project: str,
+    wandb_job_type: str,
+    wandb_notes: str,
+    work_dir: str,
+) -> str | None:
+    resolved_entity = resolve_wandb_entity(wandb_entity)
+    init_kwargs = {
+        'project': wandb_project,
+        'job_type': wandb_job_type,
+        'notes': wandb_notes,
+        'dir': work_dir,
+    }
+    if resolved_entity is not None:
+        init_kwargs['entity'] = resolved_entity
+
+    try:
+        wandb.init(**init_kwargs)
+        return resolved_entity
+    except Exception as exc:
+        if resolved_entity is None or not _is_wandb_entity_error(exc):
+            raise
+
+        logger.warning(
+            f"W&B entity '{resolved_entity}' failed. Retrying with the "
+            f'logged-in default entity. Original error: {exc}',
+        )
+        try:
+            wandb.finish()
+        except Exception:
+            pass
+
+        init_kwargs.pop('entity', None)
+        wandb.init(**init_kwargs)
+        return None
+
+
+def _is_wandb_entity_error(exc: Exception) -> bool:
+    message = str(exc).lower()
+    return (
+        exc.__class__.__name__.lower() == 'commerror'
+        and ('entity' in message or 'upsertbucket' in message)
     )
 
 

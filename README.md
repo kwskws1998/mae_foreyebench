@@ -304,6 +304,10 @@ PY
 
 hf auth login
 
+# Required for online sweeps. Skip only when using WANDB_MODE=offline.
+wandb login
+wandb status
+
 python run_commands/utils/download_processed_folds_from_hf.py \
   skboy/eyebench-processed-folds \
   --local-dir . \
@@ -333,6 +337,17 @@ lightning 2.5.1.post0
 pytorch_metric_learning <installed version>
 src.data import ok
 ```
+
+If a sweep is launched with `WANDB_MODE=online`, confirm W&B authentication before training:
+
+```bash
+wandb login
+wandb status
+```
+
+The trainer defaults to `trainer.wandb_entity=auto`, which means the code does not pass an explicit W&B entity and lets W&B use the logged-in default account or team. Do not set `trainer.wandb_entity` to a guessed username. If an invalid entity is passed, training retries once with the default logged-in entity.
+
+Without login, `wandb.init(...)` fails with `No API key configured`.
 
 To run several baselines:
 
@@ -376,7 +391,7 @@ python src/run/single_run/train.py \
   trainer.devices=1 \
   trainer.precision=THIRTY_TWO_TRUE \
   trainer.num_workers=4 \
-  trainer.wandb_entity=offline \
+  trainer.wandb_entity=auto \
   trainer.wandb_project=CMAEMAG_PoTeC_RC_smoke \
   trainer.wandb_job_type=CMAEMAGEye_PoTeC_RC_fold0 \
   model.batch_size=2 \

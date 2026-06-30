@@ -46,7 +46,8 @@ class BaseTrainer:
         wandb_job_type (str): Type of job for Weights & Biases logging. Default is "MISSING".
         wandb_project (str): Weights & Biases project name.
             Default is "reading-comprehension-from-eye-movements".
-        wandb_entity (str): Weights & Biases entity name. Default is "EyeRead".
+        wandb_entity (str): Weights & Biases entity name. Use "auto" to let
+            W&B use the logged-in default entity.
         wandb_notes (str): Additional notes for Weights & Biases logging.
             Default is an empty string.
         overwrite_data (bool): If True, overwrites the relevant TextDataSet and ETDataset.
@@ -62,7 +63,7 @@ class BaseTrainer:
     run_mode: RunModes = RunModes.TRAIN
     wandb_job_type: str = 'MISSING'
     wandb_project: str = 'EyeBench'
-    wandb_entity: str = 'EyeRead'
+    wandb_entity: str = 'auto'
     wandb_notes: str = ''
     sample_m_per_class: bool = False
     samples_per_epoch: int | None = None

@@ -506,22 +506,11 @@ class BaseModel(pl.LightningModule, SharedBaseModel):
         """
         if isinstance(self.logger, WandbLogger):
             wandb_logger = self.logger.experiment
-            fields = {
-                'Actual': 'Actual',
-                'Predicted': 'Predicted',
-                'nPredictions': 'nPredictions',
-            }
-
             wandb_logger.log(
                 {
-                    title: wandb.plot_table(
-                        'EyeRead/multi-run-confusion-matrix',
-                        wandb.Table(
-                            columns=['Actual', 'Predicted', 'nPredictions'],
-                            data=cm_data,
-                        ),
-                        fields,
-                        {'title': title},
+                    title: wandb.Table(
+                        columns=['Actual', 'Predicted', 'nPredictions'],
+                        data=cm_data,
                     ),
                 }
             )
