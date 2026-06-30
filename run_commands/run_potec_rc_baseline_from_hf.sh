@@ -24,6 +24,17 @@ LOG_DIR="${LOG_DIR:-$ROOT_DIR/logs}"
 mkdir -p "$LOG_DIR" "$RUN_ROOT" "$ROOT_DIR/results/raw"
 echo "$RUN_ROOT" | tee "$LOG_DIR/latest_${DATA_TASK}_baseline_run_dir.txt"
 
+python - <<'PY'
+try:
+    from pytorch_metric_learning import samplers  # noqa: F401
+    import src.data.datamodules.base_datamodule  # noqa: F401
+except ModuleNotFoundError as exc:
+    raise SystemExit(
+        "Missing Python dependency before training: "
+        f"{exc}. Install with: python -m pip install pytorch-metric-learning"
+    ) from exc
+PY
+
 python run_commands/utils/download_processed_folds_from_hf.py \
   "$HF_DATASET_REPO" \
   --local-dir "$ROOT_DIR" \

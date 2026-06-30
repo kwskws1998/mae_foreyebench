@@ -270,6 +270,8 @@ python -m pip install --force-reinstall \
   "multiprocess==0.70.16" \
   "packaging==24.2"
 
+python -m pip install pytorch-metric-learning
+
 python - <<'PY'
 import torch
 import transformers
@@ -280,6 +282,9 @@ import dill
 import multiprocess
 import packaging
 import lightning
+import pytorch_metric_learning
+from pytorch_metric_learning import samplers
+import src.data.datamodules.base_datamodule
 
 print("torch", torch.__version__)
 print("cuda", torch.cuda.is_available())
@@ -293,6 +298,8 @@ print("dill", dill.__version__)
 print("multiprocess", multiprocess.__version__)
 print("packaging", packaging.__version__)
 print("lightning", lightning.__version__)
+print("pytorch_metric_learning", getattr(pytorch_metric_learning, "__version__", "installed"))
+print("src.data import ok")
 PY
 
 hf auth login
@@ -323,6 +330,8 @@ dill 0.3.8
 multiprocess 0.70.16
 packaging 24.2
 lightning 2.5.1.post0
+pytorch_metric_learning <installed version>
+src.data import ok
 ```
 
 To run several baselines:
