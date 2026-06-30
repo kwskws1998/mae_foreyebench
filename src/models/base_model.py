@@ -463,11 +463,20 @@ class BaseModel(pl.LightningModule, SharedBaseModel):
         ax_.add_line(line)
         ax_.legend()
 
-        self.logger.experiment.log(  # type: ignore
-            {
-                title: wandb.Image(fig_, caption=title),
-            }
-        )
+        if isinstance(self.logger, WandbLogger):
+            try:
+                self.logger.experiment.log(  # type: ignore
+                    {
+                        title: wandb.Image(fig_, caption=title),
+                    }
+                )
+            except Exception as exc:
+                logger.warning(
+                    f'Skipping W&B ROC log for {title}: '
+                    f'{exc.__class__.__name__}: {exc}'
+                )
+        else:
+            warnings.warn('No wandb logger found, cannot log ROC')
         # close the figure to prevent memory leaks
         plt.close(fig_)
 
@@ -505,15 +514,21 @@ class BaseModel(pl.LightningModule, SharedBaseModel):
             None
         """
         if isinstance(self.logger, WandbLogger):
-            wandb_logger = self.logger.experiment
-            wandb_logger.log(
-                {
-                    title: wandb.Table(
-                        columns=['Actual', 'Predicted', 'nPredictions'],
-                        data=cm_data,
-                    ),
-                }
-            )
+            try:
+                wandb_logger = self.logger.experiment
+                wandb_logger.log(
+                    {
+                        title: wandb.Table(
+                            columns=['Actual', 'Predicted', 'nPredictions'],
+                            data=cm_data,
+                        ),
+                    }
+                )
+            except Exception as exc:
+                logger.warning(
+                    f'Skipping W&B confusion matrix log for {title}: '
+                    f'{exc.__class__.__name__}: {exc}'
+                )
         else:
             warnings.warn('No wandb logger found, cannot log confusion matrix')
 
