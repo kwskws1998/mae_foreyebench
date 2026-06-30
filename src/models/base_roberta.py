@@ -3,6 +3,8 @@ See 1. On the Stability of Fine-tuning BERT: Misconceptions, Explanations, and S
 https://www.semanticscholar.org/reader/8b9d77d5e52a70af37451d3db3d32781b83ea054 for parameters
 """
 
+from typing import Any
+
 import torch
 from transformers.optimization import get_linear_schedule_with_warmup
 
@@ -50,7 +52,7 @@ class BaseMultiModalRoberta(BaseModel):
         gaze_positions,
         eye_token_type_ids=None,
         **kwargs,
-    ) -> torch.Tensor:
+    ) -> Any:
         """
         Forward pass of the model.
 
@@ -63,7 +65,7 @@ class BaseMultiModalRoberta(BaseModel):
             eye_token_type_ids (torch.Tensor, optional): Eye token type IDs. Defaults to None.
 
         Returns:
-            torch.Tensor: Model output.
+            Any: Hugging Face model output.
         """
         return self.model(
             input_ids=input_ids,

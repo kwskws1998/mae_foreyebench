@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import ast
+import os
 import re
+import time
 from collections import defaultdict
 from datetime import timedelta
 from os.path import join
@@ -196,6 +198,8 @@ def init_wandb_run(
     work_dir: str,
 ) -> str | None:
     resolved_entity = resolve_wandb_entity(wandb_entity)
+    os.environ.setdefault('WANDB__SERVICE_WAIT', '300')
+    os.environ.setdefault('WANDB_INIT_TIMEOUT', '300')
     init_kwargs = {
         'project': wandb_project,
         'job_type': wandb_job_type,
@@ -206,7 +210,7 @@ def init_wandb_run(
         init_kwargs['entity'] = resolved_entity
 
     try:
-        wandb.init(**init_kwargs)
+        _init_wandb_with_retry(init_kwargs)
         return resolved_entity
     except Exception as exc:
         if resolved_entity is None or not _is_wandb_entity_error(exc):
@@ -222,8 +226,33 @@ def init_wandb_run(
             pass
 
         init_kwargs.pop('entity', None)
-        wandb.init(**init_kwargs)
+        _init_wandb_with_retry(init_kwargs)
         return None
+
+
+def _init_wandb_with_retry(
+    init_kwargs: dict,
+    retries: int = 2,
+    delay_seconds: int = 20,
+) -> None:
+    for attempt in range(retries + 1):
+        try:
+            wandb.init(**init_kwargs)
+            return
+        except Exception as exc:
+            if attempt >= retries or not _is_wandb_transient_error(exc):
+                raise
+
+            logger.warning(
+                'W&B init hit a transient service/API error. '
+                f'Retrying in {delay_seconds * (attempt + 1)} seconds. '
+                f'Original error: {exc}',
+            )
+            try:
+                wandb.finish()
+            except Exception:
+                pass
+            time.sleep(delay_seconds * (attempt + 1))
 
 
 def _is_wandb_entity_error(exc: Exception) -> bool:
@@ -231,6 +260,23 @@ def _is_wandb_entity_error(exc: Exception) -> bool:
     return (
         exc.__class__.__name__.lower() == 'commerror'
         and ('entity' in message or 'upsertbucket' in message)
+    )
+
+
+def _is_wandb_transient_error(exc: Exception) -> bool:
+    message = str(exc).lower()
+    class_name = exc.__class__.__name__.lower()
+    transient_markers = [
+        'service process is busy',
+        'did not respond in time',
+        'timed out',
+        'timeout',
+        'temporarily unavailable',
+        'connection',
+    ]
+    return (
+        class_name in {'wandbapifailederror', 'commerror', 'usageerror'}
+        and any(marker in message for marker in transient_markers)
     )
 
 
